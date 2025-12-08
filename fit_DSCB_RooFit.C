@@ -74,11 +74,58 @@ void fit_DSCB_RooFit()
     dscb.fitTo(data, SumW2Error(kTRUE), PrintLevel(-1), Range("fitRange"));
 
 
+    // ----------------------------------------------------------
+    // Plot residual
+    // ----------------------------------------------------------
+    TH1F* hResidual = (TH1F*)hData->Clone("hResidual");
+    hResidual->Reset();
+    hResidual->SetTitle("");
+
+    double Ntot = h->Integral();
+
+    for (int i = 1; i <= hData->GetNbinsX(); ++i){
+        double binLow  = h->GetXaxis()->GetBinLowEdge(i);
+        double binUp   = h->GetXaxis()->GetBinUpEdge(i);
+        double dataVal = h->GetBinContent(i);
+        double dataErr = h->GetBinError(i);
+        
+        // Set integration range
+        m.setRange("binRange", binLow, binUp);
+
+        // Integrate PDF over bin
+        RooAbsReal* integral = dscb->createIntegral(
+                RooArgSet(m),
+                RooFit::Range("binRange")
+                );
+        double fitVal = Ntot * integral->getVal();
+        double residual = dataVal - fitVal;
+
+        hResidual->SetBinContent(i, residual);
+        hResidual->SetBinError(i, dataErr);//??
+
+        delete integral;
+
+    }
+    
 
     // ----------------------------------------------------------
-    // 6. Plot the fit result
+    // 6. Build two-panel canvas
     // ----------------------------------------------------------
-    TCanvas *c = new TCanvas("c", "DSCB Fit", 800, 600);
+
+   TCanvas *c = new TCanvas("c", "DSCB Fit", 800, 800);
+
+   Tpad* pad1 = new TPad("pad1", "top", 0, 0.3, 1, 1.0);
+   Tpad* pad2 = new TPad("pad2" "bottom", 0, 0.0, 1, 0.3);
+
+   pad1->SetBottomMargin(0.02);
+   pad2->GetTopMargin(0.05);
+   pad2->SetBottomMargin(0.3);
+
+   pad1->Draw();
+   pad2->Draw();
+
+   pad1->cd();
+
     RooPlot *frame = x.frame(Bins(60), Title("DSCB fit to C* signal"));
     data.plotOn(frame, Name("data"),
             MarkerStyle(20),
@@ -118,15 +165,31 @@ void fit_DSCB_RooFit()
     pt->AddText(Form("n_{L} = %.2f #pm %.2f",      nL.getVal(),     nL.getError()));
     pt->AddText(Form("#alpha_{R} = %.2f #pm %.2f", alphaR.getVal(), alphaR.getError()));
     pt->AddText(Form("n_{R} = %.2f #pm %.2f",      nR.getVal(),     nR.getError()));
+    pt->AddText(Form("#chi^{2}/N_{dof} = %.6f", chi2));
     pt->Draw();
 
-    TPaveText *pt2 = new TPaveText(0.6, 0.38, 0.88, 0.45, "NDC");
-    pt2->SetBorderSize(0);
-    pt2->SetFillColor(0);
-    pt2->SetTextAlign(12);
-    pt2->SetTextSize(0.03);
-    pt2->AddText(Form("#chi^{2}/N_{dof} = %.6f", chi2));
-    pt2->Draw();
+    pad2->cd();
+
+    hResidual->GetYaxis()->SetTitle("Data-Fit");
+    hResidual->GetYaxis()->SetTitleSize(0.12);
+    hResidual->GetYaxis()->SetLabelSize(0.10);
+
+    hResidual->GetXaxis()->SetTitle("m_{#gamma j} [GeV]");
+    hResidual->GetXaxis()->SetTitleSize(0.12);
+    hResidual->GetXaxis()->SetLabelSize(0.10);
+
+    hResidual->SetMarkerStyle(10);
+    hResidual->SetLineColor(kBlack);
+
+    hResidual->Draw("PE");
+
+    TLine* line = new TLine(
+            m.getMin(),0,
+            m.getMax(),0
+            );
+    line->SetLineStyle(2);
+    line->Draw("same");
+
 
     c->SaveAs("DSCB_fit_RooFit.png");
 
@@ -144,7 +207,6 @@ void fit_DSCB_RooFit()
     nR.Print();
 
 
-
     // ----------------------------------------------------------
     // 8. Save everything into a RooWorkspace for Combine
     // ----------------------------------------------------------
@@ -158,3 +220,5 @@ void fit_DSCB_RooFit()
     std::cout << "\nWorkspace saved to: signal_DSCB_workspace.root\n";
     f->Close();
     }
+
+//test

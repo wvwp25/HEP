@@ -27,7 +27,7 @@ void fit_DSCB_RooFit()
     // ----------------------------------------------------------
     // 1. Load your signal histogram
     // ----------------------------------------------------------
-    TFile *f = TFile::Open("CstarToGJ.root");
+    TFile *f = TFile::Open("/eos/user/h/hsiaoche/Signal/CstarToGJ_M1000_f0p1_13TeV_NANOAOD_v2/CstarToGJ.root");
     if (!f) { std::cerr << "File not found!" << std::endl; return; }
 
     TH1F *h = (TH1F*)f->Get("hM_reco_selected");
